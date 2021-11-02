@@ -1,6 +1,6 @@
 ---
 title: "Activity 11 - Simulation"
-author: "Name"
+author: "Bruce Buurstra"
 output: github_document
 ---
 
@@ -26,6 +26,9 @@ One way to make sure that you get similar results each time is to always run all
 For this activity, you will need the `{tidyverse}`.
 
 **delete this line and load `{tidyverse}`**
+```{r}
+library(tidyverse)
+```
 
 
 ## Exploration
@@ -59,12 +62,26 @@ ggplot(norm_samp_1000, aes(x = values)) +
 
 Using `norm_samp_1000`, obtain the mean and standard deviation of this sample?
 
+```{r}
+(norm_samp_1000 %>%
+  summarise(mean = mean(values), sd = sd(values)))
+```
 
 
 Now, create a new simulation.
 In this you will obtain a sample of size 30 from from a Normally distributed variable with a mean 50 and standard deviation 10, and find the mean and standard deviation.
 How do the mean and standard deviation compare to your answers above?
 
+They are very similar but slightly off.
+
+```{r}
+norm_samp_30 <- tibble(
+  values = rnorm(n = 30, mean = 50, sd = 10)
+)
+
+(norm_samp_30 %>%
+  summarise(mean = mean(values), sd = sd(values)))
+```
 
 
 ### Non-normally distributed population
@@ -73,6 +90,21 @@ Using a similar process, obtain Exponentially distributed variable (`?rexp`) wit
 Obtain a sample of 1,000 observations and a sample of 30 observations.
 Then, calculate the mean and standard deviation of each sample and discuss how the values are similar and how they differ.
 
+The means are very similar but the sd's are a bit different.
+
+```{r}
+exp_samp_1000 <- tibble(
+  values = rexp(1000, 0.02))
+
+exp_samp_30 <- tibble(
+  values = rexp(30, 0.02))
+
+(exp_samp_1000 %>%
+  summarise(mean = mean(values), sd = sd(values)))
+
+(exp_samp_30 %>%
+  summarise(mean = mean(values), sd = sd(values)))
+```
 
 
 
@@ -92,6 +124,19 @@ This function should produce a dataset with `n` rows.
 You should **not** use the default parameter options for these distributions (e.g., your Normal data should not have a mean of 0 or a standard deviation of 1).
 Test your function with `n = 30` and `n = 1000`.
 
+```{r}
+generate_n_samples <- function(n){
+  norm <- rnorm(n, mean = 5, sd = 2)
+  exp <- rexp(n, rate = 0.05)
+  chisq <- rchisq(n, df = 8)
+  unif <- runif(n, min = 0, max = 25)
+  data <- data.frame(cbind(norm, exp, chisq, unif))
+  return(data)
+}
+
+generate_n_samples(30)
+generate_n_samples(1000)
+```
 
 
 
@@ -109,10 +154,10 @@ These are the "population values".
 
 | Distribution | Mean       | SD         |
 |--------------|------------|------------|
-| Normal       |            |            |
-| Exponential  |            |            |
-| Chi-square   |            |            |
-| Uniform      |            |            |
+| Normal       |    5       |     2      |
+| Exponential  |    20      |    20      |
+| Chi-square   |    8       |     4      |
+| Uniform      |    12.5    |   17.68    |
 
 
 Below I provide you with a function that calculates the sample mean for each column/distribution.
@@ -122,11 +167,17 @@ sample_mean <- function(.data){
   .data %>% 
     summarise(across(everything(), mean, .names = "mean_{.col}"))
 }
+
+sample_mean(generate_n_samples(30))
+sample_mean(generate_n_samples(1000))
 ```
 
 First, verify that you know what each line of this function is doing.
 Then, use this function in addition to your multiple distribution sample generator from above to calculate the means for `n = 30` and `n = 1000`
 Discuss how the means compares for each distribution.
+
+For n = 30 the means were close and for n = 1000 the means were very close.
+
 Note that it doesn't make sense to compare means/standard deviations across the distributions.
 
 
@@ -156,11 +207,17 @@ map(1:1000, ~rnorm(30, mean = 50, sd = 10))
 Continuing to work with your multiple distribution sample generator from above, generate 1,000 samples from the four distributions each with size 30.
 We will want to continue to work with this list so be sure to assign these samples to an appropriately named object (say, `multiple_samples`).
 
+```{r}
+multiple_samples <- rerun(1000, generate_n_samples(30))
+```
 
 
 Calculate the sample mean of each sample using the appropriate `map` function and my `sample_mean` function to produce a *data frame* of multiple sample means from your multiple samples object.
 Assign these sample means to an appropriately named object.
 
+```{r}
+sample_means_object <- map_df(multiple_samples, sample_mean)
+```
 
 
 
@@ -168,11 +225,20 @@ Assign these sample means to an appropriately named object.
 Restructure your previous sample means R object to, instead of having 1,000 rows and 4 columns, have 4,000 rows and 2 columns where the columns are named `distribution` and `means`.
 Assign this restructured data to an appropriately named object.
 
+```{r}
+sample_means_longer <- sample_means_object%>%
+  pivot_longer(starts_with("mean"), names_to = "distributions", values_to = "means")
+```
 
 
 
 Using the restructured data, create a histogram for each `distribution` using a *facet* layer.
 
+```{r}
+ggplot(sample_means_longer, aes(x = means))+
+  geom_histogram()+
+  facet_grid(~distributions, scales = "free")
+```
 
 
 
@@ -184,16 +250,21 @@ Note, looking at the wiki pages linked early in this activity will help you comp
 
 Using the restructured data, obtain the mean and standard deviation **for each** of the distributions.
 
+```{r}
+sample_means_longer%>%
+  group_by(distributions)%>%
+  summarise(mean = mean(means), sd = sd(means))
+```
 
 
 
 Comment on how each mean compares to the "population values" mean that you calculated above.
 
-
+Very similar.
 
 Comment on how each standard deviation compares to the "population values" standard deviation that you calculated above.
 
-
+Much smaller
 
 ![](README-img/noun_pause.png) **Planned Pause Point**: If you have any questions, contact your instructor. Otherwise feel free to continue on.
 
@@ -209,14 +280,12 @@ The first view widow should simply tell you "`stat_bin()` using `bins = 30`. Pic
 ```{r}
 source(here::here("functions", "helper.R"))
 
-distribution_exploration(n = 100, rep = 1000, mean = 50, sd = 10, rate = 0.2, df = 4, min = 20, max = 40)
+distribution_exploration(n = 100, rep = 1000, mean = 5, sd = 2, rate = 0.05, df = 8, min = 0, max = 25)
 ```
 
 
 How do these values compare to your work with `n = 30`?
-
-
-
+Pretty similar. The sd's got smaller.
 
 
 ### Challenge 1

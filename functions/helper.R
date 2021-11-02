@@ -1,10 +1,10 @@
 generate_n_samples <- function(n){
-  tibble(
-    normal = rnorm(n = n, mean = 50, sd = 10),
-    exponential = rexp(n = n, rate = 0.2),
-    binomial = rbinom(n = n, size = 100, prob = 0.25),
-    uniform = runif(n = n, min = 10, max = 20)
-  )
+  norm <- rnorm(n, mean = 5, sd = 2)
+  exp <- rexp(n, rate = 0.05)
+  chisq <- rchisq(n, df = 8)
+  unif <- runif(n, min = 0, max = 25)
+  data <- data.frame(cbind(norm, exp, chisq, unif))
+  return(data)
 }
 
 
